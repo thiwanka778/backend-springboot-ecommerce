@@ -6,15 +6,14 @@ import lombok.Data;
 
 @Data
 @Builder
-public class GetUserResponse {
-    private String email;
+public class UpdateUserResponse {
     private Long id;
     private String firstname;
     private String lastname;
     private Role role;
+    private String email;
     private boolean isActive;
-    private String message;
-    private String address;
     private String telephone;
-
+    private String address;
+    private String message;
 }

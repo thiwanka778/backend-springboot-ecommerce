@@ -33,6 +33,8 @@ public class User implements UserDetails {
   private String lastname;
   private String email;
   private String password;
+  private String telephone;
+  private String address;
   private boolean isActive=false;
 
   @Enumerated(EnumType.STRING)

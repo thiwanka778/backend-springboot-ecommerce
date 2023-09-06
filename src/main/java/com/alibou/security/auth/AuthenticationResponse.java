@@ -22,6 +22,8 @@ public class AuthenticationResponse {
   private String firstname;
   private String lastname;
   private String email;
+  private String address;
+  private String telephone;
   private Role role;
   private boolean isActive;
 

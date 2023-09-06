@@ -4,8 +4,11 @@ import com.alibou.security.config.JwtService;
 import com.alibou.security.config.JwtTokenExtractor;
 import com.alibou.security.models.Otp;
 import com.alibou.security.repositories.OtpRepository;
+import com.alibou.security.request.UpdateUserRequest;
 import com.alibou.security.response.GetUserResponse;
 import com.alibou.security.response.Response;
+import com.alibou.security.response.UpdateUserResponse;
+import com.alibou.security.services.EmailService;
 import com.alibou.security.token.Token;
 import com.alibou.security.token.TokenRepository;
 import com.alibou.security.token.TokenType;
@@ -45,6 +48,8 @@ public class AuthenticationService {
 
   @Autowired
   JwtTokenExtractor tokenExtractor;
+  @Autowired
+  EmailService emailService;
 
   public AuthenticationResponse register(RegisterRequest request) {
     int otpCode = generateRandomSixDigitNumber();
@@ -55,7 +60,7 @@ public class AuthenticationService {
     // Calculate the expiration date and time as 10 minutes from now
     Calendar calendar = Calendar.getInstance();
     calendar.setTime(new Date());
-    calendar.add(Calendar.MINUTE, 1); // Add 10 minutes
+    calendar.add(Calendar.MINUTE, 10); // Add 10 minutes
     otp.setExpiredDateAndTime(calendar.getTime());
 
     if(request.getEmail()==null|| request.getEmail().isEmpty()||
@@ -99,6 +104,8 @@ public class AuthenticationService {
 
     // Save the OTP in the database
     otpRepository.save(otp);
+
+  emailService.sendEmail(user.getEmail(),otpCode);
 
     return AuthenticationResponse.builder()
             .accessToken(jwtToken)
@@ -148,7 +155,7 @@ public class AuthenticationService {
       // Calculate the expiration date and time as 10 minutes from now
       Calendar calendar = Calendar.getInstance();
       calendar.setTime(new Date());
-      calendar.add(Calendar.MINUTE, 1); // Add 10 minutes
+      calendar.add(Calendar.MINUTE, 10); // Add 10 minutes
       otp.setExpiredDateAndTime(calendar.getTime());
       List<Otp> existingOtps = otpRepository.findByUser(existingUser);
 
@@ -162,6 +169,8 @@ public class AuthenticationService {
 
       // Save the OTP in the database
       otpRepository.save(otp);
+
+      emailService.sendEmail(existingUser.getEmail(),otpCode);
 
       // User is not active
       return AuthenticationResponse.builder()
@@ -204,6 +213,8 @@ public class AuthenticationService {
             .id(user.getId())
             .role(user.getRole())
             .email(user.getEmail())
+            .address(user.getAddress())
+            .telephone(user.getTelephone())
             .message("Login Successfully!")
             .build();
   }
@@ -352,16 +363,17 @@ public class AuthenticationService {
     // Calculate the expiration date and time as 10 minutes from now
     Calendar calendar = Calendar.getInstance();
     calendar.setTime(new Date());
-    calendar.add(Calendar.MINUTE, 1); // Add 10 minutes
+    calendar.add(Calendar.MINUTE, 10); // Add 10 minutes
     otp.setExpiredDateAndTime(calendar.getTime());
     otp.setUser(existingUser);
 
     // Save the OTP in the database
     otpRepository.save(otp);
+
+    emailService.sendEmail(existingUser.getEmail(),otpCode);
     return VerifyOtpResponse.builder()
             .message("We have sent otp code again")
             .build();
-
 
   }
 
@@ -395,6 +407,7 @@ public class AuthenticationService {
 
     // Save the OTP in the database
     otpRepository.save(otp);
+    emailService.sendEmail(existingUser.getEmail(),otpCode);
 
     return AuthenticationResponse.builder()
             .id(existingUser.getId())
@@ -518,7 +531,86 @@ resetPasswordRequest.getPassword()==null|| resetPasswordRequest.getPassword().is
             .lastname(user.getLastname())
             .role(user.getRole())
             .isActive(user.isActive())
+            .address(user.getAddress())
+            .telephone(user.getTelephone())
             .build();
+
+
+  }
+
+  public UpdateUserResponse updateUser(HttpServletRequest request, UpdateUserRequest updateUserRequest) {
+    String token = request.getHeader("Authorization");
+    String userEmail = tokenExtractor.extractUserEmail(token);
+    User user = new User();
+    if (userEmail != null) {
+      Optional<User> userOptional=repository.findByEmail(userEmail);
+      if (userOptional.isPresent()) {
+        user = userOptional.get();
+
+      } else {
+        return UpdateUserResponse.builder()
+                .message("User not found")
+                .build();
+      }
+
+    }
+    if(user.getEmail().isEmpty()){
+      return UpdateUserResponse.builder()
+              .message("User not found")
+              .build();
+    }
+    if(!user.isActive()){
+      return UpdateUserResponse.builder()
+              .message("User not activated")
+              .build();
+    }
+
+    if(updateUserRequest.getTelephone()!=null && !updateUserRequest.getTelephone().isEmpty()){
+       User duplicate=repository.findByTelephone(updateUserRequest.getTelephone());
+
+      if(duplicate!=null && duplicate.getId()!=user.getId()){
+        return UpdateUserResponse.builder()
+                .message("Phone number already exist in the database")
+                .build();
+      }else if(duplicate!=null && duplicate.getId()==user.getId()){
+        user.setTelephone(updateUserRequest.getTelephone());
+      }else if(duplicate==null){
+        user.setTelephone(updateUserRequest.getTelephone());
+      }
+    }
+
+    if(updateUserRequest.getAddress()!=null && !updateUserRequest.getAddress().isEmpty()){
+      user.setAddress(updateUserRequest.getAddress());
+    }
+
+    if(updateUserRequest.getFirstname()!=null && !updateUserRequest.getFirstname().isEmpty()){
+      user.setFirstname(updateUserRequest.getFirstname());
+    }
+
+    if(updateUserRequest.getLastname()!=null && !updateUserRequest.getLastname().isEmpty()){
+      user.setLastname(updateUserRequest.getLastname());
+    }
+
+   User updatedUser= repository.save(user);
+
+    if (updatedUser != null) {
+      return UpdateUserResponse.builder()
+              .id(updatedUser.getId())
+              .firstname(updatedUser.getFirstname())
+              .lastname(updatedUser.getLastname())
+              .role(updatedUser.getRole())
+              .email(updatedUser.getEmail())
+              .isActive(updatedUser.isActive())
+              .telephone(updatedUser.getTelephone())
+              .address(updatedUser.getAddress())
+              .message("User updated successfully")
+              .build();
+    } else {
+      return UpdateUserResponse.builder()
+              .message("Failed to update user")
+              .build();
+    }
+
 
 
   }

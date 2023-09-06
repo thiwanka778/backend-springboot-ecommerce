@@ -1,4 +1,17 @@
 spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587 # 587 is the TLS/STARTTLS port
+    username: im8842095@gmail.com
+    password: zetapzaeenjjqmje
+    protocol: smtp
+    tls: true
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   datasource:
     url: jdbc:postgresql://localhost:5432/ecommerce
     username: postgres
@@ -6,7 +19,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
@@ -21,3 +34,7 @@ application:
       expiration: 8640000 # a day
       refresh-token:
         expiration: 604800000 # 7 days
+
+
+
+
